@@ -1,7 +1,7 @@
 from dash import Dash, html, dcc, callback, Output, Input
-import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+from collections import Counter
 
 app = Dash(__name__)
 server = app.server
@@ -31,9 +31,8 @@ data = [
 
 df = pd.DataFrame(data)
 df["date"] = pd.to_datetime(df["date"])
-df["group_size"] = df["people"].apply(lambda x: len(x) + 1)  # +1 for "me"
+df["group_size"] = df["people"].apply(lambda x: len(x) + 1)
 df["companions"] = df["people"].apply(lambda x: ", ".join(x) if x else "Solo")
-df["month"] = df["date"].dt.strftime("%B")
 df["date_str"] = df["date"].dt.strftime("%b %-d")
 
 location_colors = {
@@ -52,15 +51,11 @@ ACCENT = "#2ecc71"
 app.layout = html.Div([
     # Header
     html.Div([
-        html.H1("🍜 Soup Log", style={
+        html.H1("2026 Soup Series", style={
             "margin": "0", "fontSize": "2rem", "fontWeight": "700",
             "fontFamily": "'Georgia', serif", "color": TEXT, "letterSpacing": "-0.5px"
         }),
-        html.P("Every bowl, every visit", style={
-            "margin": "4px 0 0 0", "color": MUTED, "fontSize": "0.9rem",
-            "fontFamily": "monospace"
-        }),
-    ], style={"padding": "32px 32px 16px", "borderBottom": f"1px solid #21262d"}),
+    ], style={"padding": "32px 32px 16px", "borderBottom": "1px solid #21262d"}),
 
     # Stats row
     html.Div(id="stats-row", style={
@@ -78,7 +73,6 @@ app.layout = html.Div([
                     {"label": "Timeline", "value": "timeline"},
                     {"label": "By Location", "value": "location"},
                     {"label": "By Person", "value": "person"},
-                    {"label": "Group Size", "value": "group"},
                 ],
                 value="timeline",
                 clearable=False,
@@ -100,18 +94,9 @@ app.layout = html.Div([
 
     # Chart
     html.Div([
-        dcc.Graph(id="main-chart", style={"height": "420px"},
+        dcc.Graph(id="main-chart", style={"height": "380px"},
                   config={"displayModeBar": False})
-    ], style={"padding": "0 16px"}),
-
-    # Visit list
-    html.Div([
-        html.H3("All Visits", style={
-            "color": TEXT, "fontFamily": "'Georgia', serif",
-            "fontSize": "1rem", "margin": "0 0 12px", "fontWeight": "600"
-        }),
-        html.Div(id="visit-list")
-    ], style={"padding": "24px 32px 32px"}),
+    ], style={"padding": "0 16px 32px"}),
 
 ], style={
     "backgroundColor": BACKGROUND,
@@ -168,43 +153,84 @@ def update_chart(chart_type, loc):
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color=TEXT, family="'Helvetica Neue', sans-serif"),
-        margin=dict(l=40, r=20, t=30, b=40),
+        margin=dict(l=20, r=20, t=40, b=40),
     )
 
     if chart_type == "timeline":
         fig = go.Figure()
+
         for location, color in location_colors.items():
             sub = past[past["location"] == location]
             if sub.empty:
                 continue
+
+            sizes = sub["group_size"].apply(lambda s: 10 + s * 6)
+
+            hover = sub.apply(
+                lambda r: (
+                    f"<b>{r['date_str']}</b><br>"
+                    f"📍 {r['location']}<br>"
+                    f"👥 me" + (f", {r['companions']}" if r['companions'] != 'Solo' else "")
+                ),
+                axis=1
+            )
+
             fig.add_trace(go.Scatter(
-                x=sub["date"], y=sub["group_size"],
-                mode="markers+lines",
+                x=sub["date"],
+                y=[0] * len(sub),
+                mode="markers",
                 name=location,
-                marker=dict(size=10, color=color, line=dict(width=2, color=BACKGROUND)),
-                line=dict(color=color, width=1.5, dash="dot"),
-                text=sub.apply(lambda r: f"{r['date_str']}<br>{r['location']}<br>{r['companions']}", axis=1),
-                hoverinfo="text",
+                marker=dict(
+                    size=sizes,
+                    color=color,
+                    opacity=0.85,
+                    line=dict(width=2, color=BACKGROUND),
+                ),
+                text=hover,
+                hovertemplate="%{text}<extra></extra>",
             ))
-        # future
+
+        # Future visit
         future = filtered[filtered["future"]]
         if not future.empty:
+            hover_future = future.apply(
+                lambda r: (
+                    f"<b>{r['date_str']} ⭐ upcoming</b><br>"
+                    f"📍 {r['location']}<br>"
+                    f"👥 me" + (f", {r['companions']}" if r['companions'] != 'Solo' else "")
+                ),
+                axis=1
+            )
             fig.add_trace(go.Scatter(
-                x=future["date"], y=future["group_size"],
+                x=future["date"],
+                y=[0] * len(future),
                 mode="markers",
                 name="Upcoming",
-                marker=dict(size=12, color="#f39c12", symbol="star",
-                            line=dict(width=2, color=BACKGROUND)),
-                text=future.apply(lambda r: f"⭐ {r['date_str']} (upcoming)<br>{r['location']}<br>{r['companions']}", axis=1),
-                hoverinfo="text",
+                marker=dict(
+                    size=future["group_size"].apply(lambda s: 10 + s * 6),
+                    color="#f39c12",
+                    symbol="star",
+                    opacity=0.9,
+                    line=dict(width=2, color=BACKGROUND),
+                ),
+                text=hover_future,
+                hovertemplate="%{text}<extra></extra>",
             ))
+
         fig.update_layout(
             **plot_cfg,
-            xaxis=dict(gridcolor="#21262d", zeroline=False),
-            yaxis=dict(gridcolor="#21262d", zeroline=False, title="Group Size",
-                       tickvals=list(range(1, 7))),
+            xaxis=dict(gridcolor="#21262d", zeroline=False, showline=True, linecolor="#21262d"),
+            yaxis=dict(visible=False, range=[-1, 1]),
             legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor="#21262d", borderwidth=1),
             hovermode="closest",
+        )
+
+        fig.add_annotation(
+            text="dot size = group size",
+            xref="paper", yref="paper",
+            x=1, y=1.08, showarrow=False,
+            font=dict(size=11, color=MUTED),
+            xanchor="right"
         )
 
     elif chart_type == "location":
@@ -225,14 +251,14 @@ def update_chart(chart_type, loc):
         all_people = [p for row in past["people"] for p in row]
         if not all_people:
             fig = go.Figure()
+            fig.update_layout(**plot_cfg)
         else:
-            from collections import Counter
             counts = Counter(all_people).most_common()
             names, vals = zip(*counts)
             fig = go.Figure(go.Bar(
-                x=vals, y=names, orientation="h",
+                x=list(vals), y=list(names), orientation="h",
                 marker_color=ACCENT,
-                text=vals, textposition="outside",
+                text=list(vals), textposition="outside",
                 hoverinfo="y+x",
             ))
             fig.update_layout(**plot_cfg,
@@ -240,56 +266,7 @@ def update_chart(chart_type, loc):
                               yaxis=dict(gridcolor="#21262d", autorange="reversed"),
                               height=max(300, len(names) * 36))
 
-    elif chart_type == "group":
-        size_counts = past["group_size"].value_counts().sort_index().reset_index()
-        size_counts.columns = ["size", "count"]
-        labels = size_counts["size"].apply(lambda x: "Solo" if x == 1 else f"{x} people")
-        fig = go.Figure(go.Bar(
-            x=labels, y=size_counts["count"],
-            marker_color=ACCENT,
-            text=size_counts["count"], textposition="outside",
-            hoverinfo="x+y",
-        ))
-        fig.update_layout(**plot_cfg,
-                          xaxis=dict(gridcolor="#21262d"),
-                          yaxis=dict(gridcolor="#21262d", zeroline=False))
-
     return fig
-
-
-@callback(Output("visit-list", "children"), Input("location-filter", "value"))
-def update_list(loc):
-    filtered = df if loc == "all" else df[df["location"] == loc]
-    rows = []
-    for _, row in filtered.sort_values("date", ascending=False).iterrows():
-        is_future = row["future"]
-        color = location_colors.get(row["location"], "#8b949e")
-        companions = row["companions"]
-        rows.append(html.Div([
-            html.Div([
-                html.Span(row["date_str"], style={
-                    "fontFamily": "monospace", "fontSize": "0.85rem",
-                    "color": "#f39c12" if is_future else MUTED, "minWidth": "60px"
-                }),
-                html.Span("⭐ upcoming  " if is_future else "", style={"fontSize": "0.75rem", "color": "#f39c12"}),
-                html.Span(row["location"], style={
-                    "fontSize": "0.8rem", "color": color,
-                    "backgroundColor": f"{color}18",
-                    "padding": "2px 8px", "borderRadius": "4px",
-                    "fontFamily": "monospace"
-                }),
-                html.Span(companions, style={
-                    "fontSize": "0.85rem", "color": TEXT, "marginLeft": "8px"
-                }),
-            ], style={"display": "flex", "gap": "12px", "alignItems": "center"}),
-        ], style={
-            "padding": "10px 14px",
-            "borderLeft": f"3px solid {color}",
-            "backgroundColor": "#f39c1208" if is_future else CARD_BG,
-            "borderRadius": "0 6px 6px 0",
-            "marginBottom": "6px",
-        }))
-    return rows
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ data = [
     {"date": "2026-04-15", "people": ["Thoby"], "location": "West 4th", "future": False},
     {"date": "2026-04-19", "people": ["Thoby"], "location": "West 4th", "future": False},
     {"date": "2026-04-29", "people": [], "location": "West 4th", "future": False},
-    {"date": "2026-05-04", "people": ["Carrington"], "location": "North Van", "future": True},
+    {"date": "2026-05-04", "people": ["Carrington"], "location": "North Van", "future": False},
     {"date": "2026-05-11", "people": ["Paige"], "location": "West 4th", "future": True},
 ]
 

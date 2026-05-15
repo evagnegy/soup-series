@@ -11,6 +11,39 @@ app = Dash(
 )
 server = app.server
 
+app.index_string = """
+<!DOCTYPE html>
+<html>
+<head>
+{%metas%}
+<title>2026 Soup Series</title>
+{%favicon%}
+{%css%}
+<style>
+  /* Dark-theme overrides for React-Select (dcc.Dropdown) */
+  [class*="-control"] { background-color: #161b22 !important; border-color: #30363d !important; min-height: 44px !important; }
+  [class*="-menu"] { background-color: #161b22 !important; border: 1px solid #30363d !important; }
+  [class*="-option"] { background-color: #161b22 !important; color: #e6edf3 !important; }
+  [class*="-option"]:hover, [class*="-option--is-focused"] { background-color: #21262d !important; }
+  [class*="-option--is-selected"] { background-color: #2d333b !important; }
+  [class*="-singleValue"] { color: #e6edf3 !important; }
+  [class*="-placeholder"] { color: #8b949e !important; }
+  [class*="-indicatorSeparator"] { background-color: #30363d !important; }
+  [class*="-dropdownIndicator"] svg { color: #8b949e !important; fill: #8b949e !important; }
+  [class*="-Input"] input { color: #e6edf3 !important; }
+</style>
+</head>
+<body>
+{%app_entry%}
+<footer>
+{%config%}
+{%scripts%}
+{%renderer%}
+</footer>
+</body>
+</html>
+"""
+
 # Data
 data = [
     {"date": "2026-01-02", "people": ["Thoby"], "location": "West 4th", "future": False},
@@ -33,7 +66,7 @@ data = [
     {"date": "2026-04-29", "people": [], "location": "West 4th", "future": False},
     {"date": "2026-05-04", "people": ["Carrington"], "location": "North Van", "future": False},
     {"date": "2026-05-11", "people": ["Paige"], "location": "West 4th", "future": False},
-    {"date": "2026-05-11", "people": ["Thoby"], "location": "West 4th", "future": True},
+    {"date": "2026-05-15", "people": ["Thoby"], "location": "West 4th", "future": True},
 ]
 
 df = pd.DataFrame(data)
@@ -75,7 +108,7 @@ app.layout = html.Div([
         "padding": f"20px {PAD}",
     }),
 
-    # Controls — stack vertically on mobile
+    # Controls — capped width on desktop, stack on mobile
     html.Div([
         html.Div([
             html.Label("View", style={
@@ -91,9 +124,9 @@ app.layout = html.Div([
                 ],
                 value="timeline",
                 clearable=False,
-                style={"width": "100%", "minHeight": "44px"},
+                style={"width": "100%"},
             ),
-        ], style={"flex": "1", "minWidth": "140px"}),
+        ], style={"width": "180px", "minWidth": "140px", "flex": "0 1 180px"}),
         html.Div([
             html.Label("Location", style={
                 "color": MUTED, "fontSize": "0.75rem", "fontFamily": "monospace",
@@ -105,9 +138,9 @@ app.layout = html.Div([
                         [{"label": l, "value": l} for l in sorted(df["location"].unique())],
                 value="all",
                 clearable=False,
-                style={"width": "100%", "minHeight": "44px"},
+                style={"width": "100%"},
             ),
-        ], style={"flex": "1", "minWidth": "140px"}),
+        ], style={"width": "200px", "minWidth": "140px", "flex": "0 1 200px"}),
     ], style={
         "display": "flex",
         "gap": "16px",

@@ -332,9 +332,9 @@ def update_chart(chart_type, loc):
             fig.add_annotation(
                 text=f"{emoji} {label}",
                 xref="paper", yref="paper",
-                x=1.01, y=1.0 - i * 0.12,
+                x=1.01, y=1.0 - i * 0.08,
                 showarrow=False,
-                font=dict(size=12, color=TEXT),
+                font=dict(size=15, color=TEXT),
                 xanchor="left",
                 align="left",
             )
